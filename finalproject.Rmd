@@ -1,0 +1,300 @@
+---
+title: "GVPT 421 Final Project"
+author: "Arthur Thomas"
+date: "5/18/2018"
+output: html_document
+---
+##Final Project: What affects suicide rates in the United States?
+
+In the United States, there has been an increase in mental health concerns, whether it stems from the over-prescribing of opioids, mental instability of the youth who commit horrible acts, stress from school, depression from societal expectations, etc. it is a serious issue and it can often lead to suicide or self-harm. The US should begin study this issue and strive to implement a set of policies that help people with their anxieties or other mental health issues and offer easier access to mental health care, such therapists or psychologists or possibly medication. Recently, there have been issues with mental health at UMD, sparking movements to get students to try to change the university's policies/efforts. <b>Hypotheis:</b> I believe that varaibles such as Access to Mental Health Resources, Depression and Drug Usage by state all have effects to predicting the suicide rate of a state. 
+
+##What is the narrative at UMD around mental health? 
+Recent University of Maryland Diamondback articles expressing the concern for UMD's disregard for Mental health issues faced by students and how the university health center had a backup of over 30 days, which can lead to even worse mental health issues.
+
+```{r, echo=FALSE, include=FALSE}
+#setup, include=FALSE}
+library(ggplot2)
+library(ggthemes)
+library(scales)
+library(maps)
+library(plyr)
+library(mapproj)
+library(miceadds)
+library(multiwayvcov)
+library(plotly)
+library(ggiraph)
+#library(tidyverse)
+library(classInt)
+library(RColorBrewer)
+library(devtools)
+library(easyGgplot2)
+library(mapproj)
+library(tm)
+library(wordcloud)
+library(readtext)
+library(dplyr)
+
+data <-read.csv("finalprojectdata.csv")
+```
+
+```{r} 
+mental <- readtext('mental.txt')
+mental <- paste(mental$text, collapse=" ")
+mental <- VectorSource(mental)
+corpus <- Corpus(mental)
+corpus <- tm_map(corpus, content_transformer(tolower))
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, stripWhitespace)
+corpus <- tm_map(corpus, removeWords, stopwords("english"))
+corpus <- tm_map(corpus, removeWords, c("student","_","-","“","","201516","201617","kirklandgordon",'schledwitz'))
+#creating matrix
+dtm <- DocumentTermMatrix(corpus)
+dtm <- as.matrix(dtm)
+frequency <- colSums(dtm)
+frequency <- sort(frequency, decreasing=TRUE)
+#5 Most common words:
+head(frequency)
+words <- names(frequency)
+#png("wordcloud_packages.png", width=15,height=15, units='in', res=300)
+#wordcloud(words, scale=c(5,0.5), max.words=100, random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))
+wordcloud(words[1:120], frequency[1:120],color=brewer.pal(8, "Dark2"))
+
+```
+
+
+#Variable Selection: 
+###Dependent Variable: Suicide Rate
+The suicide rate variable comes from 2016 CDC report, which calculates the mortality rate calculated per the number of deaths per 100,000 total population. The higher the suicide rate, the more people (percentage wise) chose to end their lives. 
+```{r}
+mean(data$Suicide.Rate) #Suicide Rate
+```
+<i> Source https://www.cdc.gov/nchs/pressroom/sosmap/suicide-mortality/suicide.htm</i>
+
+###Independent Variables
+#####Depression
+The depression reporting variable data comes from a 2010 CDC report regarding current depression among adults, with the higher percentages representing high rates of any overall depression in that state.
+```{r}
+mean(data$Depression.Rates) #Depression
+```
+
+<i> Source https://www.cdc.gov/mmwr/preview/mmwrhtml/mm5938a2.htm?s_cid=mm5938a2_w#tab1 </i>
+
+#####Drug Usage
+The drug use variable is data from the U.S. Census Bureau, with data included in the total measure consists of "Percentage of Teenagers Who Used Illicit Drugs in the Past Month", "Number of Opioid Pain Reliever Prescriptions per 100 People","Percentage of Adults Who Used Illicit Drugs in the Past Month"  and numerous others to classify these states. The higher score indicates a higher prevalence of drug usage. 
+
+```{r}
+mean(data$Drug.Use)#Drug Usage
+```
+<i> Source https://wallethub.com/edu/drug-use-by-state/35150/ </i>
+
+#####Access to Mental Health Resources 
+The access to mental health resources variable comes from 2014 data collected by the Mental Health America organization, and classify the state by the overall ranking and the access to care ranking. A high overall (such as 1-10) ranking indicates a lower prevalence of mental illness and higher rates of access to care. A low overall ranking indicates a higher prevalence of mental illness and lower rates of access to care. The combined scores of all 15 measures make up the overall ranking.  The overall ranking includes both adult and youth measures as well as prevalence and access to care measures. 
+```{r}
+mean(data$Access.to.care)#Access to Menal Care
+```
+<i> Source http://www.mentalhealthamerica.net/issues/2017-state-mental-health-america-ranking-states </i>
+
+```{r}
+
+#Mapping
+#states_map<-map_data("states") #run this in the command line, wont work outside of it for some reason. 
+data <-read.csv("finalprojectdata.csv")
+data <- data.frame(data[,-1], row.names=data[,1])
+states_map<-map_data("state")
+#creating a seperate data variable for the depression rates map that is missing data. 
+dataDepresionMap <-data[which(data$Depression.Rates!="0"), ]
+dataDepresionMap<-merge(states_map, dataDepresionMap, by.x="region", by.y="state")
+dataDepresionMap<-arrange(dataDepresionMap, group, order)
+#Merging State Data
+dataMap<-merge(states_map, data, by.x="region", by.y="state")
+dataMap<-arrange(dataMap, group, order)
+#Suicide Rate Map
+map<-ggplot(dataMap, aes(x=long, y=lat, group=group, fill=Suicide.Rate,  locationmode = dataMap$region)) +
+  geom_polygon(color = "black") +
+  scale_fill_gradient2(low="blue", mid="grey88", high="magenta", midpoint=median(data$Suicide.Rate))+
+  expand_limits(x= states_map$long, y=states_map$lat) + 
+  ggtitle("Suicide Rate by State", subtitle = NULL) + 
+  labs(caption = "Source: CDC 2016") + 
+  labs(fill='Rate%')  + coord_map("bonne",  param=25) 
+map_map <- map+theme_fivethirtyeight()
+#ggplotly(map)
+#Access to Care Map
+map1<-ggplot(dataMap, aes(x=long, y=lat, group=group, fill=Access.to.care)) +
+  geom_polygon(color = "black") +
+  scale_fill_gradient2(low="blue", mid="grey88", high="magenta", midpoint=median(data$Access.to.care))+
+  expand_limits(x= states_map$long, y=states_map$lat) +
+  coord_map("polyconic")+ggtitle("Access to Mental Health Care", subtitle = " Greater = less access")+labs(caption = "Source: Mental Health America 2014") + labs(fill=NULL)  + coord_map("bonne",  param=45) 
+#map1
+#Depression Rate Map
+map2<-ggplot(dataDepresionMap, aes(x=long, y=lat, group=group, fill=Depression.Rates)) +
+  geom_polygon(color = "black") +scale_fill_gradient2(low="blue", mid="grey88", high="magenta", midpoint=median(dataDepresionMap$Depression.Rates))+
+  expand_limits(x= states_map$long, y=states_map$lat) +
+  coord_map("polyconic")+ggtitle("Any Depression Reporting", subtitle = NULL)+labs(caption = "Source: CDC 2010") +   labs(fill='Rate%')  + coord_map("bonne",  param=45) 
+#Drug Usage Map
+map3<-ggplot(dataMap, aes(x=long, y=lat, group=group, fill=Drug.Use)) +
+  geom_polygon(color = "black") +
+  scale_fill_gradient2(low="blue", mid="grey88", high="magenta", midpoint=median(data$Drug.Use))+
+  expand_limits(x= states_map$long, y=states_map$lat) +
+  coord_map("polyconic")+ggtitle("Drug usage", subtitle = NULL)+labs(caption = "Source: U.S. Census Bureau,")+ labs(fill='Usage%')  +
+  coord_map("bonne",  param=45) 
+
+ggplotly(map_map)
+```
+From first glance, it is obvious that there is a pocket of states that have higher access to mental health resources such as counseling, have lower suicide rates. There is also evidence that supports the claim that depression is higher in the states that have higher drug usage, like in the Midwest. After looking at the mental care and suicide rate maps, it appears as if lower access to care leads to a higher suicide rate. The maps also show that as states with higher depression have better mental care resource access. 
+
+
+
+#Comparing the relationships of all the variables: 
+```{r}
+# Multiple graphs on the same page
+ggplot2.multiplot(map,map1,map2,map3, cols=2)
+```
+ 
+
+<br />
+
+
+##The relationship between Depression Rates, Drug Usage on Suicide Rates:
+```{r setup, include=FALSE}
+
+#ggplotly(ggplot(data=data, aes(x =Suicide.Rate , y = state, color =Depression.Rates)) + 
+  #geom_line() + scale_color_gradient(low="blue", high="red"))
+
+#ggplot(data=dataDepresionMap, aes(x=region, fill=Suicide.Rate)) +geom_bar()+ coord_flip() 
+
+
+
+#ggplot(data, aes(Suicide.Rate)) + 
+  #geom_line(aes(state ,color = "Suicide Rate", group = 1)) + 
+  #geom_point(aes(x = Drug.Use, y = Suicide.Rate, color = "Drug Use")) +
+  #geom_point(aes(x = Access.to.care , color = "Access to Care")) + 
+  #geom_line(aes(Depression.Rates, color = "Depresseion Rates")) #+ 
+  #theme(axis.text.x = element_text(angle = 48, hjust = 1)) +
+  #ggtitle("Overall Suicide Rate Over Care, Drugs and")+xlab("States")+ylab("Suicide Rates")+coord_fixed()
+##The relationship between depression, drug usage and suicide rates
+
+# Scatterplot
+#ggplot(data, aes(x= Access.to.care, y=Suicide.Rate, color = state)) +geom_point() 
+    #geom_point(size=2, alpha=1) + geom_abline(size=2)
+  
+```  
+
+```{r}
+#Depression and Suicide
+ds<-ggplot(data, aes(x= Suicide.Rate, y=Depression.Rates)) + 
+  geom_point()+geom_smooth(method = "lm")+
+  scale_x_continuous() + 
+  ggtitle("Depression Rates on Suicide Rates") +
+  xlab("Suicide Rates")+ ylab("Depression Rates") +theme_hc() +
+  scale_colour_hc()
+
+ggplotly(ds)
+```
+This plot indicates that as depression rates increase, so do suicide rates. However, there is some missing data from 6 or so states which may be acting as outliers and skew the data downwards, lowering the overall depression rate. 
+
+```{r}
+ds1<-ggplot(dataDepresionMap, aes(x= Suicide.Rate, y=Depression.Rates, weight = Access.to.care)) + 
+  geom_point()+geom_smooth(aes(weight=Access.to.care),method="lm", formula = y ~ x + I(x^2)) +
+  scale_x_continuous() + 
+  ggtitle("Depression Rates on Suicide Rates\nWeighted by Access to Mental Health Resources")+
+  xlab("Suicide Rates")+ ylab("Depression Rates") + theme_hc() +
+  scale_colour_hc()
+ggplotly(ds1)
+
+```
+Removing the states without data in the second plot helps show how the distribution's range better, alluding to the evidence that as depression rates increase, so do suicide rates in most of the states, however, weighting this variable with their access to care shows that suicide rates do increase with depression, however, they don't increase past a certain level of depression. Moreover, with poorer access to care, there is a higher suicide rate, regardless of overall depression rates. 
+
+
+
+##Further Exploring the Relationship between Access to Care and Suicide Rate. Ranked by State. 
+```{r}
+#g <- ggplot(data, aes(Access.to.care, weight =Suicide.Rate, fill = state)) + geom_bar() + ggtitle("Access to Mental Health Resources\nby Suicide Rate in US States")+ xlab("Mental Health Resource Access (from easy to hard)") + ylab(" Suicide Rates") + guides(fill=FALSE) + coord_equal()
+#ggplotly(g)
+
+as<-ggplot(data, aes(x = reorder(state, -Suicide.Rate), y = Suicide.Rate, fill = state)) + 
+  geom_bar(stat = "identity", position = position_dodge(width=2))  + 
+  geom_text(aes(label=Access.to.care), vjust = .5, size = 2.7) + guides(fill=FALSE) + 
+  ggtitle("Access to Mental Health Resources\nby Suicide Rate in US States", subtitle = "Ranked by suicide rate then ease of acess to mental care") + 
+  xlab("Mental Health Resource Access (from easy to hard)") + 
+  ylab(" Suicide Rates")  + coord_fixed()  + coord_flip() + theme_hc() +
+  scale_colour_hc()
+as
+#ggplotly(as)
+
+#ggplot(data, aes(x = reorder(state, -Suicide.Rate), y = Suicide.Rate, fill = state )) + 
+  #geom_bar(stat = "identity")+ coord_flip() 
+
+
+```
+There is certainly a relationship between the ease of access to care and suicide rate, and it appears that the ease of access to mental health care does downplay the suicide rate, however, this relationship is not very strong. This is because the state of West Virginia is ranked 4th in care access, however they have the 10th highest Suicide rate. 
+
+```{r}
+#Drug Addiction and Suicide
+das<-ggplot(data, aes(x= Suicide.Rate, y=Drug.Use)) + 
+  geom_point()+geom_smooth(method = "lm")+
+  scale_x_continuous(limit = c(5, 25))+ 
+  ggtitle("Drug Usage by Suicide Rates")+
+  xlab("Suicide Rates")+ ylab("Drug Usage Rates") + theme_hc() +
+  scale_colour_hc()
+ggplotly(das)
+das1<-ggplot(data, aes(x= Suicide.Rate, y=Drug.Use, size = Access.to.care)) + 
+  geom_point()+geom_smooth(method = "lm")+
+  scale_x_continuous(limit = c(5, 25))+ 
+  ggtitle("Drug Usage by Suicide Rates\nWeighted by Access to Care")+
+  xlab("Suicide Rates")+ ylab("Drug Usage Rates") + theme_hc() +
+  scale_colour_hc()
+ggplotly(das1)
+
+
+
+```
+The graph illustrates the relationship of self-reported use of drugs, non-illicit, according to the data sources. It reveals that there is actually a negative relationship between suicide rates and the use of drugs. The distribution shows that at lower suicide rates, such as 7.5%, drug usage is at 45%, and as suicide rates increase, drug usage decreases. This could potentially be explained my over-medication in the united states, since the states using less drugs seem to have higher difficulties controlling suicide.  
+
+
+
+
+
+
+###Regression Model
+#####Dummy Variable is 1 if the suicide rate is greater than 15% per 100,000 thousand, labeled as "dum".
+```{r}
+reg<-data[which(data$Depression.Rates!="0"), ] #dropping missing observations. 
+#regGreaterThan15<-reg[which(reg$dum!="0"), ] #testing for variables above .15 suicide rates
+model <- miceadds::lm.cluster(data = reg, formula = Suicide.Rate ~ Depression.Rates + Drug.Use + Access.to.care, cluster = "dum", family = "binomial")
+summary(model)
+```
+The model above shows that my independent variables are largely related tochanges towards the dependent variable of Suicide Rate, as all of the P-values were well below .05, some being as low as -11.8804698726. This is more than 10 times below the limits of .05, indicating that I should reject the null hypothesis that these variables, or that access to mental health resources, depression rates, and drug usage has no real effect increasing or decreasing the suicide rate (since results show that they do). The R-Squared value of 0.18693 indicates the regression model does holds some predictive properties of the variability in the DV. 
+
+
+The 3 variables coefficients show that there was very little change per each unit, yet still significant change. 
+<br/>
+For each one unit increase to Suicide Rate, there was -.65 level in Depression Rates, indicating an inverse relationship. This is interesting as it would expect that as suicide rates increased, depression would follow. The Test Statistics shows 
+
+For drug usage, there was a -.045 decrease for each unit of change in suicide rate, showing that as suicide rates increased, there was less reported use of drugs per state. This could be explained by the theory that these anti-depression medication works, and in states that have less use of this, have higher rates. 
+
+For access to mental health care, there was actually a positive linear relationship, as for each increase in the DV, there was a .139 increase in access to care showing that states have seen  the effects of the DV and have made strides to actually prevent futurue attempts by adding resources. 
+<br/>
+
+
+
+```{r, include=FALSE, echo=FALSE}
+shapiro.test(reg$Suicide.Rate)
+shapiro.test(reg$Depression.Rates)
+shapiro.test(reg$Drug.Use)
+shapiro.test(reg$Access.to.care)
+```
+
+#Final Points:
+
+&nbsp;&nbsp;&nbsp;&nbsp;Overall, there is a sizeable relationship between the variables of Depression, Drug usage, and Access to mental health recourses on the suicide rate per state.  Depression rates seem to hold a positive linear relationship between it and despite there being a few outlier states, there is still a weak to a medium linear relationship between the two. The data shows that suicide rates hover between 11 and 20th percentile, while overall depression hovers from ~7% to 12%, and states that are in this depression range have varying rates of suicide. To further test for accuracy, controlling for access to mental health resources shows that as depression reaches a peak of 10%, then steadily declines as at upper tier suicide rates. The upper tier of suicide rates has much worse levels of access to care, with the highest states ranging from 20-50. Despite these figures, there are a few states that have excellent access to care, yet are still in the average suicide rate category. 
+
+
+Mental health care resources also have a weak positive linear relationship with suicide rates, and in the figure above, I have ranked every state by its ease of access to mental health care, then by suicide frequency per 100,000 people. The results show that there is a decrease in suicide rate with the better care and there is an increase to access to care as the suicide rate increases, however, there are still some outlier states which have decent/good access to care, yet still higher rates. After a google search, a high ranking state of Alaska has 3 community health centers just in one small town, however, they are still the 10 highest on the suicide rate scale. The drug usage variable actually had a negative linear relationship and seemed to be another factor which helped lower suicide rate, perhaps it has to do with medication to help prevent depression, which in turn helps prevent suicide. 
+The drug usage variable has a negative linear relationship with the DV. Perhaps because of less drug usage for mental health illness such as depression being used, leading to higher suicide rates. Although the decline slope is marginal, there is still significance as this trend is observed overall 
+<br/>
+The regression output shows that my predictions were largely correct, according to the data I used, there is a significant effect from all of these variables. There was a decently sizable effect caused by access to mental health resources, which revealed that more suicides, caused more mental care centers to sprout up. 
+
+####Policy Suggestion: 
+To conclude, it is safe to say that depression, drug usage and mental care all have impacts on suicide rates, and the US should seek to provide more resources to help people cope with these issues, which seems as the best plausible solutiton to stopping sucidie and other problems mental illness can cause and help save lives. 
+
+

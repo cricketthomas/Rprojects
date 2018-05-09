@@ -1,0 +1,80 @@
+---
+title: "Text Analysis 2 Arthur"
+author: "Arthur Thomas"
+date: "3/29/2018"
+output: word_document
+---
+
+Text Analysis 2 in class activity:
+After running all the prep coding laid out in the script file, do the following:
+1.   Make a chart like the one that comes after line 165, using a word other than jobs. Talk about why you picked this word and what you find.
+2.   Make a chart like the one that comes after line 180 using a word other than economy. Talk about why you picked this word and what you find.
+3.   Compare two presidents in a word cloud like the chart you see after line 284. Talk about why you picked those presidents and what you find.
+
+
+##Finding frequency of American Dream Mentions or Dream in general.
+```{r}
+library(stringr)
+str_count(sotu_corpus, pattern = "shooting")
+str_count(sotus$text, pattern = "gun")
+gunMentions <- str_count(sotus$text, pattern = "gun")
+
+#I wonder if presidents mention jobs more when unemployment was high in previous year?
+
+#vector of murder rates from 1976 to 2017 #source: http://www.disastercenter.com/crime/uscrime.htm
+
+murder_rate <- c(8.7,8.8,9,9.8,10.2,9.8,9.1,8.3,7.9,8,8.6,8.3,
+                 8.4,8.7,9.4,9.8,9.3,9.5,9,8.2,7.4,6.8,6.3,5.7,
+                 5.5,5.6,5.6,5.7,5.5,5.6,5.7,5.6,5.4,5,4.8,4.7,
+                 4.7,4.5,4.4,4.9,5.3)
+
+#make a vector of the years when state of the union happened
+years <- c(1978:2018)
+
+#save as dataframe
+#bind together as a dataframe
+dreamDF <- data.frame(murder_rate, years, gunMentions, sotus$party)
+dreamDF
+#lets plot it out and draw a line of best fit 
+ggplot(data=dreamDF, aes(x=murder_rate, y=gunMentions)) +
+  geom_point(aes(color=sotus.party)) + geom_smooth(colour="black", method="lm") + theme_bw() +
+  scale_color_manual(values = c("blue", "red"))+
+  ylab("Number of Mentions") + xlab("Murder Rates (1976 to 2018)") +
+  ggtitle("Mentions of the Word 'Gun' \n By Murder Rate") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+I chose the word 'gun' because of how relevant the issue has become very recently with the weekly shootings in the united states. To make the chart more accurate, I sourced some data from the web in regards to the murder rate per 100,000 people. It's remarkable how little Republicans mention the word Gun in respects to the average and the in comparison to Democrats. When the murder rate is higher, there is some mention from Republicans but not the expected amount or anything on par with what the Democrats have been doing. 
+
+
+
+##Reagans use of "Drugs's"
+```{r}
+reaganSpeech <- corpus_subset(sotu_corpus, president == "reagan")
+
+#now lets use the "kwic" function in quanteda, which finds words much like stringr's, but pass
+#it to a special plot called a lexical dispersion plot using the "texplot_xray()" function
+kwic(reaganSpeech, pattern = "Drugs") %>%
+textplot_xray()
+```
+I selected the word drugs and Reagans speeches because of Reagan's famous anti-drug or war on drug policies, and I wanted to see whether the harsh punishments, aggressive ad campaign of 'DARE', and harm that was done to many minority communities ever made it into any of his speeches, and the results show that there was some mentioning of the word in 86 and 86, and in 1988, it mentioned much more, nearly 4 times more than previous years. Potentially because Reagan was on his way out and was attempting to make a point during his last SOTU address. 
+
+##Comparing Reagan and Trump. 
+```{r}
+
+trumpReagan <- corpus_subset(sotu_corpus, year %in% c(1984, 2017)) %>%
+  dfm(remove = stopwords("english"), remove_punct=TRUE, stem=FALSE)
+
+#use quanteda wordcloud with comparison option
+textplot_wordcloud(trumpReagan, comparison = TRUE, min_count = 10, rotation = 0,
+                   color = c("purple","red"))  
+
+```
+I selected these two presidents speeches as president trump has been very vocal about his similarities to Reagan in respects to them both being outsiders and TV "stars" (and for their views). What I found is that trump focused more on America, and mentioned a lot of buzzwords in regard to his campaign promises such as citizens, immigration, jobs, safe and some lesser mentioned words were in relation to the economy. Reagan seemed to be attempting to fosters peace and freedom, and also heavily mention the economy, and buzzwords associated with it like deficit, tax, budget and spend. 
+
+
+
+
+
+
+
+

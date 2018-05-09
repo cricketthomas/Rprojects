@@ -1,0 +1,38 @@
+---
+title: "Network of Silicon Valley"
+author: "Arthur Thomas"
+date: "4/27/2018"
+output: html_document
+---
+
+Silicon Valley Network Graph:
+
+I decided to make a network graph for the Silicon Valley TV show on HBO. I classified them by companies/groups in which they are present. 1. Piped Piper, 2. Housemates, 3. Investors, 4. Hooli (fake google) Company, and 5. Random Reoccurring Characters. They overlap a lot, and many characters know or have interacted with other characters, but not everyone knows everyone just yet. 
+
+
+```{r}
+library(networkD3)
+library(magrittr)
+
+link <- read.csv("sourceName.csv")
+node <- read.csv("nameList.csv")
+link
+node
+forceNetwork(Links = link, Nodes = node, Source = "source",
+             Target = "target", 
+             Value = "value", 
+             NodeID = "name",
+             Nodesize = "size",
+             radiusCalculation = "Math.sqrt(d.nodesize)+6",
+             Group = "group",
+             fontSize = 15,
+             opacity = 1, 
+             legend = TRUE, 
+             arrows = TRUE, 
+             linkDistance = networkD3::JS("function(d) { return 130*d.value; }"),
+             # mess number*d to get good distances. 
+             zoom = T)
+
+
+
+```
