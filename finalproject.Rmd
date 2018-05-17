@@ -2,7 +2,7 @@
 title: "GVPT 421 Final Project"
 author: "Arthur Thomas"
 date: "5/16/2018"
-output: html_document
+output: rmarkdown::github_document
 ---
 ##What affects suicide rates in the United States?
 
