@@ -2,8 +2,8 @@
 title: "GVPT 421 Final Project"
 author: "Arthur Thomas"
 date: "5/16/2018"
-output: rmarkdown: :github_document
-
+rmarkdown: github_document
+---
 ##What affects suicide rates in the United States?
 
 In the United States, there has been an increase in mental health concerns, whether it stems from the over-prescribing of opioids, mental instability of the youth who commit horrible acts, stress from school, depression from societal expectations, etc. it is a serious issue and it can often lead to suicide or self-harm. The US should begin to study this issue and strive to implement a set of policies that help people with their anxieties or other mental health issues and offer easier access to mental health care, such therapists or psychologists or possibly medication. Recently, there have been issues with mental health at UMD, sparking movements to get students to try to change the university's policies/efforts. <b>Hypothesis:</b> I believe that variables such as Access to Mental Health Resources, Depression, Stress and Drug Usage by state all have effects to predicting the suicide rate of a state. In this report, I will show the effects these variables have on the DV. 
@@ -328,5 +328,5 @@ To conclude, it is safe to say that depression, drug usage, stress and mental ca
 
 
 
----
+
 
